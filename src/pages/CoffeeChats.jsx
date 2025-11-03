@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useCalendar } from '../context/CalendarContext';
 import { collection, query, getDocs, addDoc, updateDoc, doc, where, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion } from 'framer-motion';
@@ -11,11 +10,7 @@ const CoffeeChats = () => {
   const { currentUser, userProfile } = useAuth();
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [filter, setFilter] = useState('all'); // all, my-chats, available
-  const [showRusheeModal, setShowRusheeModal] = useState(false);
-  const [selectedRushee, setSelectedRushee] = useState(null);
-  const [loadingRushee, setLoadingRushee] = useState(false);
 
   const isMember = userProfile?.role === 'member' || userProfile?.role === 'admin';
 
@@ -72,6 +67,9 @@ const CoffeeChats = () => {
 const MemberCoffeeChats = ({ chats, fetchChats, loading, filter, setFilter }) => {
   const { currentUser } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showRusheeModal, setShowRusheeModal] = useState(false);
+  const [selectedRushee, setSelectedRushee] = useState(null);
+  const [loadingRushee, setLoadingRushee] = useState(false);
   const [formData, setFormData] = useState({
     date: '',
     time: '',
@@ -265,16 +263,12 @@ const MemberCoffeeChats = ({ chats, fetchChats, loading, filter, setFilter }) =>
                 {chat.rusheeId ? (
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <p className="text-xs text-blue-600 font-medium mb-1">RUSHEE</p>
-                    {isMember ? (
-                      <button
-                        onClick={() => handleViewRushee(chat.rusheeId)}
-                        className="text-sm font-semibold text-blue-900 hover:text-blue-700 hover:underline transition-colors text-left"
-                      >
-                        {chat.rusheeName}
-                      </button>
-                    ) : (
-                      <p className="text-sm font-semibold text-blue-900">{chat.rusheeName}</p>
-                    )}
+                    <button
+                      onClick={() => handleViewRushee(chat.rusheeId)}
+                      className="text-sm font-semibold text-blue-900 hover:text-blue-700 hover:underline transition-colors text-left"
+                    >
+                      {chat.rusheeName}
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -370,6 +364,108 @@ const MemberCoffeeChats = ({ chats, fetchChats, loading, filter, setFilter }) =>
                   <button type="submit" className="btn-primary">Add Slot</button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Rushee Details Modal */}
+        {showRusheeModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowRusheeModal(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Rushee Profile</h2>
+                <button
+                  onClick={() => setShowRusheeModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {loadingRushee ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Loading rushee information...</p>
+                </div>
+              ) : selectedRushee ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{selectedRushee.name}</h3>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Year</p>
+                        <p className="font-medium text-gray-800">{selectedRushee.year}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Major</p>
+                        <p className="font-medium text-gray-800">{selectedRushee.major}</p>
+                      </div>
+                      {selectedRushee.phone && (
+                        <div>
+                          <p className="text-gray-600">Phone</p>
+                          <p className="font-medium text-gray-800">{selectedRushee.phone}</p>
+                        </div>
+                      )}
+                      {selectedRushee.linkedin && (
+                        <div>
+                          <p className="text-gray-600">LinkedIn</p>
+                          <a
+                            href={selectedRushee.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            View Profile
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedRushee.whyJoin && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2">Why Join Scale + Coin?</h4>
+                      <p className="text-gray-700 whitespace-pre-wrap">{selectedRushee.whyJoin}</p>
+                    </div>
+                  )}
+
+                  {selectedRushee.strengths && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2">Strengths</h4>
+                      <p className="text-gray-700 whitespace-pre-wrap">{selectedRushee.strengths}</p>
+                    </div>
+                  )}
+
+                  {selectedRushee.experience && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2">Relevant Experience</h4>
+                      <p className="text-gray-700 whitespace-pre-wrap">{selectedRushee.experience}</p>
+                    </div>
+                  )}
+
+                  {selectedRushee.resumeUrl && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2">Resume</h4>
+                      <a
+                        href={selectedRushee.resumeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
+                        View Resume
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Rushee information not found</p>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
@@ -599,108 +695,6 @@ const RusheeCoffeeChats = ({ chats, fetchChats, loading, filter, setFilter }) =>
                 )}
               </motion.div>
             ))}
-          </div>
-        )}
-
-        {/* Rushee Details Modal */}
-        {showRusheeModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowRusheeModal(false)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">Rushee Profile</h2>
-                <button
-                  onClick={() => setShowRusheeModal(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-                >
-                  &times;
-                </button>
-              </div>
-
-              {loadingRushee ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-600">Loading rushee information...</p>
-                </div>
-              ) : selectedRushee ? (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{selectedRushee.name}</h3>
-                    <div className="grid md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600">Year</p>
-                        <p className="font-medium text-gray-800">{selectedRushee.year}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Major</p>
-                        <p className="font-medium text-gray-800">{selectedRushee.major}</p>
-                      </div>
-                      {selectedRushee.phone && (
-                        <div>
-                          <p className="text-gray-600">Phone</p>
-                          <p className="font-medium text-gray-800">{selectedRushee.phone}</p>
-                        </div>
-                      )}
-                      {selectedRushee.linkedin && (
-                        <div>
-                          <p className="text-gray-600">LinkedIn</p>
-                          <a
-                            href={selectedRushee.linkedin}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-blue-600 hover:underline"
-                          >
-                            View Profile
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {selectedRushee.whyJoin && (
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">Why Join Scale + Coin?</h4>
-                      <p className="text-gray-700 whitespace-pre-wrap">{selectedRushee.whyJoin}</p>
-                    </div>
-                  )}
-
-                  {selectedRushee.strengths && (
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">Strengths</h4>
-                      <p className="text-gray-700 whitespace-pre-wrap">{selectedRushee.strengths}</p>
-                    </div>
-                  )}
-
-                  {selectedRushee.experience && (
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">Relevant Experience</h4>
-                      <p className="text-gray-700 whitespace-pre-wrap">{selectedRushee.experience}</p>
-                    </div>
-                  )}
-
-                  {selectedRushee.resumeUrl && (
-                    <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">Resume</h4>
-                      <a
-                        href={selectedRushee.resumeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                      >
-                        View Resume
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-600">Rushee information not found</p>
-                </div>
-              )}
-            </motion.div>
           </div>
         )}
       </div>
