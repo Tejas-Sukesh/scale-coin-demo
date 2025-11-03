@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to get user role
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // Helper function to check if user is member or admin
+    function isMemberOrAdmin() {
+      return isAuthenticated() && (getUserRole() == 'member' || getUserRole() == 'admin');
+    }
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    // Helper function to check if user is rushee
+    function isRushee() {
+      return isAuthenticated() && getUserRole() == 'rushee';
+    }
+
+    // Users collection - users can read/write their own data
+    // Allow all authenticated users to read (needed for calendar integration)
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId;
+    }
+
+    // Members collection
+    match /members/{memberId} {
+      allow read: if isMemberOrAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Rushees collection
+    match /rushees/{rusheeId} {
+      allow read: if isMemberOrAdmin() || (isRushee() && request.auth.uid == resource.data.userId);
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if (isAuthenticated() && request.auth.uid == resource.data.userId) || isAdmin();
+    }
+
+    // Events collection
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Coffee chats collection
+    match /chats/{chatId} {
+      allow read: if isAuthenticated();
+      allow create: if isMemberOrAdmin();
+      allow update: if isAuthenticated();
+      allow delete: if isMemberOrAdmin();
+    }
+
+    // Feedback collection
+    match /feedback/{feedbackId} {
+      allow read: if isMemberOrAdmin();
+      allow create: if isMemberOrAdmin();
+      allow update: if isMemberOrAdmin() && request.auth.uid == resource.data.memberId;
+    }
+
+    // Rankings collection
+    match /rankings/{rankingId} {
+      allow read: if isMemberOrAdmin();
+      allow write: if isMemberOrAdmin() && request.auth.uid == rankingId;
+    }
+  }
+}
